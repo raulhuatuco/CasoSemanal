@@ -23,20 +23,20 @@ SET VARIABLE anio_analogo = COALESCE(getvariable('anio_analogo'), 2020);
 -- La semana de referencia: la ultima con datos, y su año.
 CREATE OR REPLACE TEMP TABLE ref_caudal AS
 WITH ultimo AS (
-    SELECT max(fecha) AS f FROM crudo.caudal
+    SELECT max(fecha) AS f FROM crudo.caudal_serie
     WHERE year(fecha) <> getvariable('anio_analogo')::INT
 )
-SELECT c.cod_pto, c.slot, (c.fecha - u.f) + 6 AS dia_rel, c.m3s
-FROM crudo.caudal c, ultimo u
+SELECT c.id_yupana, c.equipo_yupana, c.categoria, c.restriccion, c.slot, (c.fecha - u.f) + 6 AS dia_rel, c.m3s
+FROM crudo.caudal_serie c, ultimo u
 WHERE c.fecha BETWEEN u.f - 6 AND u.f
   AND year(c.fecha) <> getvariable('anio_analogo')::INT;
 
 -- La misma semana del calendario, en el anio analogo.
 CREATE OR REPLACE TEMP TABLE ref_hist AS
-WITH ultimo AS (SELECT max(fecha) AS f FROM crudo.caudal
+WITH ultimo AS (SELECT max(fecha) AS f FROM crudo.caudal_serie
                 WHERE year(fecha) = getvariable('anio_analogo')::INT)
-SELECT c.cod_pto, c.slot, (c.fecha - u.f) + 6 AS dia_rel, c.m3s
-FROM crudo.caudal c, ultimo u
+SELECT c.id_yupana, c.equipo_yupana, c.categoria, c.restriccion, c.slot, (c.fecha - u.f) + 6 AS dia_rel, c.m3s
+FROM crudo.caudal_serie c, ultimo u
 WHERE c.fecha BETWEEN u.f - 6 AND u.f
   AND year(c.fecha) = getvariable('anio_analogo')::INT;
 
@@ -52,24 +52,25 @@ WITH horizonte AS (
 ),
 -- El caudal historico del dia equivalente del horizonte.
 futuro_hist AS (
-    SELECT c.cod_pto, c.slot,
-           (c.fecha - (SELECT min(fecha) FROM crudo.caudal
+    SELECT c.id_yupana, c.equipo_yupana, c.categoria, c.restriccion, c.slot,
+           (c.fecha - (SELECT min(fecha) FROM crudo.caudal_serie
                        WHERE year(fecha) = getvariable('anio_analogo')::INT))
            AS desplazamiento,
            c.m3s
-    FROM crudo.caudal c
+    FROM crudo.caudal_serie c
     WHERE year(c.fecha) = getvariable('anio_analogo')::INT
 )
-SELECT h.fecha, r.slot, r.cod_pto,
+SELECT h.fecha, r.slot, r.id_yupana, r.equipo_yupana,
+       r.categoria, r.restriccion,
        -- Si el historico no cubre ese dia el factor es 1: se mantiene el
        -- caudal actual en vez de inventar una tendencia.
        round(r.m3s * coalesce(f.m3s / nullif(rh.m3s, 0), 1.0), 5) AS m3s,
        coalesce(f.m3s / nullif(rh.m3s, 0), 1.0) AS factor
 FROM horizonte h
 JOIN ref_caudal r ON r.dia_rel = h.dia_rel
-LEFT JOIN ref_hist rh ON rh.cod_pto = r.cod_pto AND rh.slot = r.slot
+LEFT JOIN ref_hist rh ON rh.id_yupana = r.id_yupana AND rh.categoria = r.categoria AND rh.slot = r.slot
                      AND rh.dia_rel = r.dia_rel
-LEFT JOIN futuro_hist f ON f.cod_pto = r.cod_pto AND f.slot = r.slot
+LEFT JOIN futuro_hist f ON f.id_yupana = r.id_yupana AND f.categoria = r.categoria AND f.slot = r.slot
                        AND f.desplazamiento = (h.fecha - getvariable('fecha_ini')::DATE);
 
 CREATE OR REPLACE VIEW crudo.control_caudal_sin_factor AS
