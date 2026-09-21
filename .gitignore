@@ -1,0 +1,18 @@
+# Datos pesados: no van al repo. El codigo los reconstruye o los descarga.
+caso_base/
+nuevos_casos/
+*.xlsm
+*.xlsx
+*.gdx
+*.g00
+
+# Base local y salidas de trabajo
+motor/staging/
+motor/logs/
+*.duckdb
+*.duckdb.wal
+*.parquet
+
+__pycache__/
+*.pyc
+~$*

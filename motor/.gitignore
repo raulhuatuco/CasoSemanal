@@ -1,0 +1,5 @@
+staging/
+logs/
+*.duckdb
+*.parquet
+~$*

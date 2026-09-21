@@ -1,0 +1,56 @@
+[CARPETAS],,,
+Clave,Valor,,
+carpeta_scripts,sql,,
+carpeta_datos,..,,
+carpeta_salida,..\nuevos_casos,,aqui se crea una carpeta por caso
+,,,
+[HORIZONTE],,,
+Clave,Valor,,
+inicio,2026-09-20,,primer dia del caso 1
+dias_caso,7,,largo de cada caso en dias
+n_casos,4,,cuantos casos encadenados: 1 2 3 4 ...
+delta,1,,paso de etapa en horas (1 = horario)
+tipo_escenario,2,,va a escenario.csv col 4
+prefijo,SEM,,nombre = prefijo + numero de semana ISO + anio
+,,,
+[CASOS],,,
+Nombre,Inicio,Dias,Delta
+,,,  <- si se llena esta tabla manda sobre [HORIZONTE]
+,,,
+[EJECUCION],,,
+Clave,Valor,,
+base,staging\yupana.duckdb,,
+script,00_comun\00_esquema.sql,,
+script,00_comun\01_dim_equipo.sql,,
+script,10_mantenimientos\10_vigente.sql,,
+script,10_mantenimientos\40_equivgen.sql,,
+script,00_comun\90_hecho_restriccion.sql,,
+script,20_renovables\10_semana_analoga.sql,,
+script,20_renovables\30_emit.sql,,
+script,30_caudales\10_proyeccion.sql,,
+script,30_caudales\30_emit.sql,,
+,,,
+[COMANDOS],,,
+Comando,,,
+python "{RAIZ}\tools\armar_casos.py" --inicio {INICIO} --dias {DIAS} --casos {CASOS},,,
+,,,
+[VARIABLES],,,
+Clave,Valor,Tipo,Comentario
+caso_base,caso_base\YUPANA_SEM2326,texto,carpeta del caso de referencia
+libro_manto,Manto2023_2026.xlsm,archivo,fuente COES + hojas Gen / EquivGen
+libro_deltas,CALCULO_DELTAS Junio - julio 2026.xlsx,archivo,deltas y factores de caudal
+libro_match,data\match_centrales.xlsx,archivo,mapeo centrales -> codigos yupana
+hacer_mantos,VERDADERO,logico,activa el modulo 1
+hacer_rer,VERDADERO,logico,activa el modulo 2
+hacer_caudales,VERDADERO,logico,activa el modulo 3
+prio_diario,3,numero,prelacion PDO
+prio_semanal,2,numero,prelacion PSO
+prio_mensual,1,numero,prelacion PMO
+solo_fs,VERDADERO,logico,solo INDISPONIBILIDAD = F/S
+rer_metrica,rmse,texto,criterio de semana analoga
+,,,
+[SALIDAS],,,
+Consulta,Hoja,,
+control_prelacion,chk_prelacion,,
+control_solapes,chk_solapes,,
+control_equipos_sin_match,chk_sin_match,,
