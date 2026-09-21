@@ -58,9 +58,34 @@ def _descripciones(filas) -> dict:
     return d
 
 
+def inicio_tras_coes(cn) -> dt.date:
+    """El primer dia que el programa del COES ya no cubre.
+
+    Los casos se arman para el tramo que el COES todavia no ha programado: de
+    ahi en adelante no hay ni programa semanal ni diario, y los modulos tienen
+    que estimar. Empezar antes seria competir con un pronostico que el propio
+    operador ya publico y que es mejor que cualquier estimacion nuestra.
+    """
+    fin = cn.execute("""
+        SELECT max(f) FROM (
+            -- Hasta donde llega el programa semanal de generacion.
+            SELECT max(fecha) AS f FROM crudo.medicion WHERE lectcodi IN (3, 4)
+            UNION ALL
+            -- Y hasta donde llega el programa semanal de mantenimiento.
+            SELECT max(final)::DATE FROM crudo.mtto
+            WHERE programa = 'PROGRAMADO SEMANAL'
+              AND descarga >= (SELECT max(descarga) FROM crudo.mtto) - INTERVAL 1 DAY
+        )""").fetchone()[0]
+    if fin is None:
+        raise SystemExit("no hay programa del COES cargado: corre coes_med.py"
+                         " --lectcodi 3 y coes_mtto.py antes de armar casos")
+    return fin + dt.timedelta(days=1)
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--inicio", type=dt.date.fromisoformat, required=True)
+    p.add_argument("--inicio", default="auto",
+                   help="aaaa-mm-dd, o 'auto' para arrancar donde acaba el COES")
     p.add_argument("--dias", type=int, default=7)
     p.add_argument("--casos", type=int, default=1)
     p.add_argument("--delta", type=int, default=1, help="paso de etapa, horas")
@@ -73,6 +98,13 @@ def main() -> int:
     base = pathlib.Path(a.base)
     salida = pathlib.Path(a.salida)
     cn = bd.abrir(a.bd)
+
+    if a.inicio == "auto":
+        a.inicio = inicio_tras_coes(cn)
+        print(f"  inicio automatico: {a.inicio} (el dia siguiente al ultimo"
+              " que cubre el programa del COES)")
+    else:
+        a.inicio = dt.date.fromisoformat(a.inicio)
 
     filas_base, cod_datres = _leer(base / "datosrestricciones.csv")
     desc = _descripciones(filas_base)

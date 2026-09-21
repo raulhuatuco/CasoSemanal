@@ -163,3 +163,19 @@ CREATE TABLE IF NOT EXISTS crudo.caudal_web (
     hora         TINYINT,   -- 0..23; la fuente es horaria, no de media hora
     m3s          DOUBLE
 );
+
+-- Que equipos usa el caso, desde plantah.csv y modot.csv.
+--
+-- POR QUE HACE FALTA
+-- Esas tablas traen la central entera Y sus unidades: HUINCO (277.9 MW) y
+-- ademas HUINCO G1..G4 (69 MW cada una, que suman lo mismo). El caso usa una
+-- representacion u otra, y lo dice la columna "Considera Equipo". Emitir
+-- mantenimiento para las dos cuenta la indisponibilidad dos veces.
+CREATE TABLE IF NOT EXISTS dim.equipo_yupana (
+    categoria  INTEGER,   -- 4 plantah, 3 modot
+    id_yupana  INTEGER,
+    equipo     VARCHAR,
+    considera  BOOLEAN,   -- "Considera Equipo"
+    escenario  BOOLEAN,   -- "Considera en Escenario"
+    capacidad  DOUBLE
+);

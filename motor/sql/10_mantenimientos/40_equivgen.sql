@@ -52,11 +52,19 @@ cruce AS (
     LEFT JOIN capacidad c ON c.tipo = g.tipo AND c.id_yupana = g.id_yupana
     GROUP BY g.tipo, g.id_yupana, g.equipo, f.fecha, f.slot
 )
-SELECT tipo, id_yupana, equipo, fecha, slot,
+SELECT c.tipo, c.id_yupana, c.equipo, c.fecha, c.slot,
        -- No se suman: se toma la peor. Sumar contaria dos veces una central
        -- que tiene a la vez una maquina y su patio en mantenimiento.
-       least(1.0, greatest(por_compartido, por_maquinas)) AS indisponibilidad
-FROM cruce;
+       least(1.0, greatest(c.por_compartido, c.por_maquinas)) AS indisponibilidad
+FROM cruce c
+-- Solo lo que el caso usa. plantah.csv y modot.csv traen la central entera Y
+-- sus unidades: HUINCO (277.9 MW) y tambien HUINCO G1..G4, que suman lo mismo.
+-- El caso elige una representacion con "Considera Equipo"; emitir las dos
+-- contaria la indisponibilidad dos veces.
+JOIN dim.equipo_yupana e
+  ON e.categoria = CASE c.tipo WHEN 'hidro' THEN 4 ELSE 3 END
+ AND e.id_yupana = c.id_yupana
+ AND e.considera;
 
 -- CONTROLES
 CREATE OR REPLACE VIEW crudo.control_indisp_rango AS
@@ -72,6 +80,30 @@ SELECT g.tipo, g.id_yupana, g.equipo, g.tipo_calculo, g.cod_coes
 FROM dim.gen g
 LEFT JOIN dim.equipo e ON e.cod_equipo = g.cod_coes
 WHERE e.cod_equipo IS NULL;
+
+CREATE OR REPLACE VIEW crudo.control_dia_sin_unidades AS
+-- DEBE SER 0: un dia del horizonte en el que ninguna unidad esta en
+-- mantenimiento. Casi nunca es cierto: el SEIN siempre tiene algo fuera.
+-- Pasa cuando el horizonte se estira mas alla de lo que el programa mensual
+-- alcanza a declarar, y el caso sale con toda la generacion disponible, que
+-- es el error optimista mas caro de todos. control_dia_sin_programa no lo ve,
+-- porque el mensual si cubre esos dias; lo que no tiene es eventos.
+SELECT d::DATE AS dia
+FROM unnest(generate_series(getvariable('fecha_ini')::DATE,
+                            getvariable('fecha_fin')::DATE, INTERVAL 1 DAY)) t(d)
+WHERE NOT EXISTS (SELECT 1 FROM crudo.indisp_yupana v WHERE v.fecha = d::DATE);
+
+CREATE OR REPLACE VIEW crudo.control_gen_no_considerado AS
+-- INFORMATIVA: unidades del maestro Gen que el caso no considera, y por eso
+-- no llegan a datosrestricciones.csv. Es normal que haya (la central entera
+-- cuando el caso modela sus unidades), pero si aparece una que deberia estar,
+-- es que plantah.csv o modot.csv tienen "Considera Equipo" en 0.
+SELECT DISTINCT g.tipo, g.id_yupana, g.equipo
+FROM dim.gen g
+LEFT JOIN dim.equipo_yupana e
+       ON e.categoria = CASE g.tipo WHEN 'hidro' THEN 4 ELSE 3 END
+      AND e.id_yupana = g.id_yupana
+WHERE e.id_yupana IS NULL OR NOT e.considera;
 
 CREATE OR REPLACE VIEW crudo.control_yupana_sin_mtto AS
 -- INFORMATIVA: unidades de Yupana que en todo el horizonte nunca salen. Es
