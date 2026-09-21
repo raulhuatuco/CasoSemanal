@@ -32,7 +32,17 @@ FILA_CODIGO, FILA_EMPRESA, FILA_TIPO, FILA_DATOS = 8, 9, 10, 12
 
 
 def _fecha_slot(v):
-    """La primera columna trae la fecha y la hora del final del intervalo."""
+    """Fecha y slot 1..48 desde la marca de tiempo de la primera columna.
+
+    El reporte va a media hora y la marca es el FINAL del intervalo, igual que
+    las columnas de datosrestricciones.csv: la primera del dia es 00:30 y la
+    ultima cierra a las 24:00. Por eso 00:30 es el slot 1 y no el 2.
+
+    El cierre del dia se escribe de tres maneras segun el reporte: 23:59,
+    24:00 o 00:00 del dia siguiente. Redondear los minutos a la media hora mas
+    cercana las cubre las tres, y un 0 resultante es el cierre del dia
+    anterior, su slot 48.
+    """
     if isinstance(v, dt.datetime):
         f, h, m = v.date(), v.hour, v.minute
     else:
@@ -41,9 +51,10 @@ def _fecha_slot(v):
             return None, None
         d, mo, y, h, m = (int(x) for x in m0.groups())
         f, = (dt.date(y, mo, d),)
-    slot = h * 2 + (1 if m == 0 else 2)
-    # 00:00 es el cierre del dia anterior: es el slot 48 de ese dia.
-    return (f - dt.timedelta(days=1), 48) if slot == 1 and m == 0 else (f, slot)
+    slot = round((h * 60 + m) / 30)
+    if slot == 0:
+        return f - dt.timedelta(days=1), 48
+    return f, slot
 
 
 def _equipo(v) -> tuple[str, str]:
