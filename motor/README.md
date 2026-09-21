@@ -132,8 +132,8 @@ por lo que diga [HORIZONTE].
 
 | modulo | restricciones | estado |
 |---|---|---|
-| mantenimientos | 4/1, 3/14 | completo, backtest 91% |
-| renovables | 25/26 | completo, semana analoga |
+| mantenimientos | 4/1, 3/14 | completo; ver el aviso de abajo sobre el final del horizonte |
+| renovables | 25/26 | completo, semana analoga escalada por capacidad |
 | caudales | 4/2, 19/6 | cruce y proyeccion listos; falta la descarga y mas historia |
 
 De los caudales queda pendiente bajarlos solos. En el portal del COES viven en
@@ -146,7 +146,8 @@ ahi documentado para retomarlo.
 
 Mientras tanto los reportes se bajan a mano y entran de golpe:
 
-    python tools/cargar_caudales.py C:eportes --patron "*.xlsx"
+    python tools/cargar_caudales.py C:
+eportes --patron "*.xlsx"
 
 Y mientras haya poca historia, `control_caudal_sin_factor` dira 100%: la
 proyeccion es en realidad una persistencia del ultimo caudal observado. Es el
@@ -156,6 +157,18 @@ Ojo con las hojas de resultados. En CALCULO_DELTAS las hojas `SEM*_2026` no son
 semanas observadas sino lo ya calculado, y llevan las fechas de la semana de
 referencia: cargarlas contaria esa semana varias veces. El cargador detecta el
 rango repetido y las omite.
+
+## Donde falla todavia
+
+**El mantenimiento no llega al final de un horizonte de 4 semanas.** El
+programa mensual del COES declara hasta poco despues del mes en curso, asi que
+los ultimos dias se quedan sin ningun evento y el caso sale con toda la
+generacion disponible. `control_dia_sin_unidades` los marca: si da distinto de
+0, esos dias son optimistas. Queda pendiente rellenarlos con PROGRAMADO ANUAL,
+que existe en la lista HTML del portal pero no en el export.
+
+**Los caudales son persistencia, no proyeccion**, mientras
+`control_caudal_sin_factor` diga 100%: falta cargar semanas historicas.
 
 ## Los cruces por nombre
 

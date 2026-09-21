@@ -24,6 +24,10 @@ SET VARIABLE estacional_dias = COALESCE(getvariable('estacional_dias'), 35);
 -- Las semanas inmediatamente anteriores no son candidatas: se solapan con la
 -- referencia y ganarian por construccion sin aportar informacion.
 SET VARIABLE guarda_dias = COALESCE(getvariable('guarda_dias'), 21);
+-- Ventana para medir la capacidad de cada planta: el mayor MW que alcanzo en
+-- esos dias. Corta, y se pierde una planta que no tuvo un buen dia; larga, y
+-- no se entera de una ampliacion.
+SET VARIABLE dias_capacidad = COALESCE(getvariable('dias_capacidad'), 120);
 
 -- Generacion renovable observada, por planta Yupana y media hora.
 CREATE OR REPLACE TEMP TABLE rer AS
@@ -105,15 +109,49 @@ SELECT s.desde AS semana, s.n,
        (SELECT desde FROM mejor) + (s.n * 7)::INT AS analoga
 FROM semanas s;
 
--- El resultado: cada dia del horizonte toma el perfil del dia equivalente de
--- su semana analoga.
+-- LA CAPACIDAD, QUE NO ES LA MISMA ENTONCES QUE AHORA
+-- No se copian los MW tal cual. Entre la semana analoga y el horizonte entran
+-- plantas nuevas y se amplian las que habia: el pico simultaneo del parque RER
+-- paso de 1879 MW en septiembre de 2025 a 2189 en febrero de 2026. Copiar MW
+-- crudos arrastra la capacidad vieja y subestima, sin avisar. Se copia el
+-- factor de planta (lo que genero sobre lo que podia) y se multiplica por la
+-- capacidad de ahora.
+CREATE OR REPLACE TEMP TABLE capacidad AS
+WITH ultimo AS (
+    SELECT max(fecha) AS f FROM (
+        SELECT fecha FROM rer GROUP BY fecha HAVING count(DISTINCT slot) = 48)
+)
+SELECT r.id_yupana,
+       max(r.mw) FILTER (
+           WHERE r.fecha > u.f - getvariable('dias_capacidad')::INT) AS mw_hoy,
+       max(r.mw) FILTER (WHERE r.fecha BETWEEN e.analoga - 60 AND e.analoga + 60)
+           AS mw_entonces
+FROM rer r, ultimo u, (SELECT min(analoga) AS analoga FROM elegida) e
+GROUP BY r.id_yupana;
+
 CREATE OR REPLACE TABLE crudo.rer_proyectado AS
 SELECT e.semana + (r.fecha - e.analoga)::INT AS fecha,
-       r.slot, r.id_yupana, r.nombre, r.mw, e.analoga AS origen
+       r.slot, r.id_yupana, r.nombre,
+       -- Sin capacidad de entonces (planta que no existia) el factor no se
+       -- puede calcular y se deja el MW tal cual, que es lo conservador.
+       round(r.mw * coalesce(c.mw_hoy / nullif(c.mw_entonces, 0), 1.0), 4) AS mw,
+       e.analoga AS origen,
+       coalesce(c.mw_hoy / nullif(c.mw_entonces, 0), 1.0) AS factor_capacidad
 FROM elegida e
 JOIN rer r ON r.fecha BETWEEN e.analoga AND e.analoga + 6
+LEFT JOIN capacidad c ON c.id_yupana = r.id_yupana
 WHERE e.semana + (r.fecha - e.analoga)::INT
       BETWEEN getvariable('fecha_ini')::DATE AND getvariable('fecha_fin')::DATE;
+
+CREATE OR REPLACE VIEW crudo.control_rer_capacidad AS
+-- INFORMATIVA: cuanto se corrigio cada planta por cambio de capacidad. Un
+-- factor muy distinto de 1 es una ampliacion o una planta nueva; uno de
+-- exactamente 1 en una planta que si existia significa que no se pudo medir.
+SELECT id_yupana, any_value(nombre) AS nombre,
+       round(any_value(factor_capacidad), 3) AS factor
+FROM crudo.rer_proyectado GROUP BY id_yupana
+HAVING abs(any_value(factor_capacidad) - 1) > 0.02
+ORDER BY factor DESC;
 
 CREATE OR REPLACE VIEW crudo.control_rer_analoga AS
 -- INFORMATIVA: que semana historica se copio en cada una del horizonte, y con
