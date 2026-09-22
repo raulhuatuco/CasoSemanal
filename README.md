@@ -18,7 +18,7 @@ corridas al horizonte nuevo.
 | modulo | restricciones | de donde sale |
 |---|---|---|
 | mantenimientos | 4/1, 3/14 | portal de mantenimientos del COES |
-| renovables | 25/26 | mediciones a 30 min, por semana analoga |
+| renovables | 25/26 | mediciones a 30 min, perfil tipico por tecnologia |
 | caudales | 4/2, 19/6 | historico de hidrologia y reporte de caudales |
 
 Todo esta en [`motor/`](motor/), que es una carpeta portable: no tiene rutas

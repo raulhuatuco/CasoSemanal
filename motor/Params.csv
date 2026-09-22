@@ -25,7 +25,7 @@ script,00_comun\01_dim_equipo.sql,,
 script,10_mantenimientos\10_vigente.sql,,
 script,10_mantenimientos\40_equivgen.sql,,
 script,00_comun\90_hecho_restriccion.sql,,
-script,20_renovables\10_semana_analoga.sql,,
+script,20_renovables\10_proyeccion.sql,,
 script,20_renovables\30_emit.sql,,
 script,30_caudales\10_proyeccion.sql,,
 script,30_caudales\30_emit.sql,,
@@ -47,7 +47,7 @@ prio_diario,3,numero,prelacion PDO
 prio_semanal,2,numero,prelacion PSO
 prio_mensual,1,numero,prelacion PMO
 solo_fs,VERDADERO,logico,solo INDISPONIBILIDAD = F/S
-rer_metrica,rmse,texto,criterio de semana analoga
+rer_peso_reciente,0.5,numero,solar y eolica: peso del ultimo mes frente al anio pasado
 ,,,
 [SALIDAS],,,
 Consulta,Hoja,,

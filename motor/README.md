@@ -133,7 +133,7 @@ por lo que diga [HORIZONTE].
 | modulo | restricciones | estado |
 |---|---|---|
 | mantenimientos | 4/1, 3/14 | completo; ver el aviso de abajo sobre el final del horizonte |
-| renovables | 25/26 | completo, semana analoga escalada por capacidad |
+| renovables | 25/26 | completo, perfil tipico por tecnologia, escalado a la capacidad de hoy |
 | caudales | 4/2, 19/6 | cruce y proyeccion listos; falta la descarga y mas historia |
 
 De los caudales queda pendiente bajarlos solos. En el portal del COES viven en
@@ -170,6 +170,32 @@ que existe en la lista HTML del portal pero no en el export.
 **Los caudales son persistencia, no proyeccion**, mientras
 `control_caudal_sin_factor` diga 100%: falta cargar semanas historicas.
 
+## Las renovables
+
+`20_renovables/10_proyeccion.sql` proyecta en factor de planta por media hora
+y multiplica por la capacidad de hoy (el mayor MW de los ultimos 120 dias).
+El metodo depende de la tecnologia, que sale del nombre del COES:
+
+    solar, eolica   50 % perfil medio de los ultimos 28 dias
+                    50 % misma epoca del anio pasado, +-15 dias
+    otras           perfil medio de la ultima semana (hidro de pasada, biomasa)
+
+Reemplazo a la semana analoga. Medido sobre 74 origenes semanales a 4
+semanas, error medio absoluto a media hora sobre la capacidad:
+
+                    semana analoga    ahora
+    solar            8.4 %            4.9 %
+    eolica          21.0 %           16.0 %
+    otras RER       10.4 %            6.9 %
+
+La analoga ademas subestimaba la energia solar un 15 %: una planta que no
+existia en la semana copiada salia en cero. El perfil tipico es suave, sin
+dias nublados ni calmas; para el despacho semanal es lo que corresponde.
+
+Controles: `control_rer_perfil` (metodo, capacidad y factor de planta de cada
+planta; 'solo reciente' es una planta sin un anio de historia),
+`control_rer_parada` y `control_rer_faltante`.
+
 ## Los cruces por nombre
 
 Ni las RER ni los puntos de caudal tienen un archivo que los relacione con los
@@ -188,7 +214,12 @@ Ademas se avisa de las colisiones, que el puntaje no detecta:
     dos puntos de caudal al mismo equipo de Yupana   habria que sumarlos
     una unidad del COES a dos plantas RER            se contaria dos veces
 
-Los dos casos van a revision en vez de elegir uno. Una planta sin perfil es
+Los dos casos van a revision en vez de elegir uno.
+
+El puntaje tampoco sabe de tecnologia: WAYRA_EXP cruzaba con C.S. WAYRA SOLAR
+(64 MW) en vez de C.E. WAYRA EXTENSION (178 MW), y CS CARHUAQUERO, una solar
+de 0.5 MW, sumaba tambien la C.H. CARHUAQUERO de 92 MW. Estan corregidos en
+`mapeo_rer.csv`, que manda sobre el automatico. Una planta sin perfil es
 preferible a una con el perfil equivocado.
 
 Mientras un modulo no tenga datos, `armar_casos.py` conserva sus restricciones
