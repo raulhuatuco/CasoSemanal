@@ -2,6 +2,7 @@
 
     python coes_caudal.py 2026-09-01 2026-09-07
     python coes_caudal.py 2026-01-01 2026-09-20 --lectura 75
+    python coes_caudal.py 2017-01-01 2024-08-31 --tramo 31
 
     https://www.coes.org.pe/Portal/Operacion/HistoricoHidrologia/Index
 
@@ -119,28 +120,12 @@ def _parsear(cuerpo: str, lectura: int, cuando: dt.datetime) -> list[tuple]:
     return out
 
 
-def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("inicio", type=dt.date.fromisoformat)
-    p.add_argument("fin", type=dt.date.fromisoformat)
-    p.add_argument("--lectura", type=int, default=75, choices=sorted(LECTURA))
-    p.add_argument("--puntos", default="8",
-                   help="tipos de caudal; 8 es NATURAL ESTIMADO")
-    p.add_argument("--bd", default=None)
-    a = p.parse_args()
-
-    if a.puntos != "8":
-        print("aviso: se estan pidiendo tipos distintos del natural estimado."
-              " Quedan guardados con su tipo; no los agregues juntos.",
-              file=sys.stderr)
-
-    s = _sesion()
-    cuando = dt.datetime.now()
+def _tramo(s, lectura, puntos, ini, fin, cuando) -> list[tuple]:
     filas, vistas = [], set()
     # La tabla viene paginada por dias; se avanza hasta que se repite.
     for pagina in range(1, 400):
         try:
-            cuerpo = _pedir(s, a.lectura, a.puntos, a.inicio, a.fin, pagina)
+            cuerpo = _pedir(s, lectura, puntos, ini, fin, pagina)
         except urllib.error.HTTPError as e:
             # Pasado el final, el portal responde 500 en vez de una tabla
             # vacia. No es un fallo: es como avisa que ya no hay mas.
@@ -151,18 +136,56 @@ def main() -> int:
         if firma in vistas:
             break
         vistas.add(firma)
-        nuevas = _parsear(cuerpo, a.lectura, cuando)
+        nuevas = _parsear(cuerpo, lectura, cuando)
         if not nuevas:
             break
         filas += nuevas
-        print(f"  pagina {pagina:>3}: {len(nuevas):>5} valores", file=sys.stderr)
+    return filas
+
+
+def main() -> int:
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("inicio", type=dt.date.fromisoformat)
+    p.add_argument("fin", type=dt.date.fromisoformat)
+    p.add_argument("--lectura", type=int, default=75, choices=sorted(LECTURA))
+    p.add_argument("--puntos", default="8",
+                   help="tipos de caudal; 8 es NATURAL ESTIMADO")
+    p.add_argument("--tramo", type=int, default=31, help="dias por pedido")
+    p.add_argument("--bd", default=None)
+    a = p.parse_args()
+
+    if a.puntos != "8":
+        print("aviso: se estan pidiendo tipos distintos del natural estimado."
+              " Quedan guardados con su tipo; no los agregues juntos.",
+              file=sys.stderr)
+
+    s = _sesion()
+    cuando = dt.datetime.now()
+    filas = []
+    # El portal arma el rango completo en cada pagina: un anio entero tarda
+    # 2 s por pagina, un mes 0.5 s. Por eso se pide por tramos.
+    ini = a.inicio
+    while ini <= a.fin:
+        fin = min(ini + dt.timedelta(days=a.tramo - 1), a.fin)
+        filas += _tramo(s, a.lectura, a.puntos, ini, fin, cuando)
+        print(f"  {ini} a {fin}: {len(filas):>8} valores", file=sys.stderr)
+        ini = fin + dt.timedelta(days=1)
 
     if not filas:
         print("sin filas", file=sys.stderr)
         return 1
 
+    import time
     import pandas as pd
-    cn = bd.abrir(a.bd)
+    # Varias descargas en paralelo comparten la base: se espera el turno.
+    for intento in range(60):
+        try:
+            cn = bd.abrir(a.bd)
+            break
+        except Exception as e:
+            if "already open" not in str(e) or intento == 59:
+                raise
+            time.sleep(10)
     cn.execute("DELETE FROM crudo.caudal_web WHERE lectura = ? "
                "AND fecha BETWEEN ? AND ?", [a.lectura, a.inicio, a.fin])
     cn.register("lote", pd.DataFrame(filas, columns=[

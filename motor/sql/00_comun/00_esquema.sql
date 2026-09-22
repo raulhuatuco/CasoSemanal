@@ -179,3 +179,35 @@ CREATE TABLE IF NOT EXISTS dim.equipo_yupana (
     escenario  BOOLEAN,   -- "Considera en Escenario"
     capacidad  DOUBLE
 );
+
+-- La tabla que comparten los tres modulos. Ninguno escribe CSV: todos llenan
+-- esta, y armar_casos.py la pivotea a las 48 medias horas.
+--
+-- El par (categoria, restriccion) es el que usa Yupana en
+-- datosrestricciones.csv, y `equipo` es el id de la tabla correspondiente:
+-- categoria 4 -> plantah.csv, categoria 3 -> modot.csv.
+CREATE TABLE IF NOT EXISTS crudo.hecho_restriccion (
+    modulo      VARCHAR,   -- mantenimientos / renovables / caudales
+    equipo      INTEGER,   -- id_yupana dentro de su categoria
+    nombre      VARCHAR,
+    categoria   INTEGER,
+    restriccion INTEGER,
+    fecha       DATE,
+    slot        TINYINT,   -- 1..48
+    valor       DOUBLE
+);
+
+-- Equipo de Yupana -> estacion de caudal natural. La estacion tiene que estar
+-- en la cuenca de la central: una cuenca vecina no sirve ni para la forma.
+-- Sin estacion, el modulo repite el aporte del caso base. El embalse
+-- estacional no se estima nunca: su aporte lo fija el plan de descargas, que
+-- no depende de la lluvia que se mida ahora.
+CREATE TABLE IF NOT EXISTS dim.caudal_estacion (
+    categoria     INTEGER,   -- 4 planta, 19 embalse
+    id_yupana     INTEGER,
+    equipo_yupana VARCHAR,
+    estacion      VARCHAR,   -- crudo.caudal_web.equipo
+    relacion      VARCHAR,   -- equivalente | cuenca
+    regulacion    VARCHAR,   -- embalses: horaria | estacional
+    nota          VARCHAR
+);

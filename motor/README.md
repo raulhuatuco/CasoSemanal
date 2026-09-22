@@ -8,6 +8,7 @@ resuelve contra la ubicación del libro `Yupana_Motor.xlsm` mediante
     motor/
       Yupana_Motor.xlsm     único punto de entrada: hoja Params + botones
       Params.csv            plantilla de la hoja Params (pegar en el libro)
+      Params_caudales.csv   Params del libro de caudales
       vba/                  módulos .bas exportados, versionables en git
       sql/00_comun/         calendario, dim_equipos, emisor del CSV
       sql/10_mantenimientos/
@@ -118,7 +119,7 @@ Manto contiene 132 de los 133 pares del otro mas otros 457. Se carga con
     python tools/coes_med.py  2024-09-01 2026-09-26      mediciones, incremental
     python tools/cargar_maestros.py                      hojas Gen y EquivGen
     python tools/mapear_rer.py                           cruce RER por nombre
-    python tools/mapear_caudal.py                        cruce de caudales
+    python tools/coes_caudal.py 2026-09-01 2026-09-21    caudal natural, a diario
     (los .sql de [EJECUCION], desde Excel o duckdb.exe)
     python tools/armar_casos.py --inicio 2026-09-20 --dias 7 --casos 4
 
@@ -134,29 +135,52 @@ por lo que diga [HORIZONTE].
 |---|---|---|
 | mantenimientos | 4/1, 3/14 | completo; ver el aviso de abajo sobre el final del horizonte |
 | renovables | 25/26 | completo, perfil tipico por tecnologia, escalado a la capacidad de hoy |
-| caudales | 4/2, 19/6 | cruce y proyeccion listos; falta la descarga y mas historia |
+| caudales | 4/2, 19/6 | completo, anomalia del caudal natural sobre su climatologia; libro propio |
 
-De los caudales queda pendiente bajarlos solos. En el portal del COES viven en
-un repositorio de archivos (Operacion/Estudios/Hidrologia) que se lista con
-POST a `/Portal/browser/busqueda`, con los campos ocultos de la pagina
-(`hfRelativeDirectory`, `hfIndicadorHeader`, `hfBaseDirectory`,
-`hfBreadName`). Ese servicio devuelve 500 a todas las combinaciones que se
-probaron, con y sin cookie de sesion y con la ruta en UTF-8 y en cp1252. Queda
-ahi documentado para retomarlo.
+Un libro por tema. Cada uno tiene su hoja `Params` con solo sus scripts y sus
+salidas, y todos escriben en la misma base: cada modulo borra y repone solo
+sus filas de `crudo.hecho_restriccion`, y `armar_casos.py` junta lo que haya.
+Caudales usa `Params_caudales.csv`; mantenimientos y RER siguen en
+`Params.csv` hasta separarlos igual.
 
-Mientras tanto los reportes se bajan a mano y entran de golpe:
+## Los caudales
 
-    python tools/cargar_caudales.py C:
-eportes --patron "*.xlsx"
+`30_caudales/10_proyeccion.sql`, en dos pasos:
 
-Y mientras haya poca historia, `control_caudal_sin_factor` dira 100%: la
-proyeccion es en realidad una persistencia del ultimo caudal observado. Es el
-numero que hay que mirar para saber si el modulo 3 ya sirve.
+1. **Estacion natural** (Historico de Hidrologia del COES, CAUDAL NATURAL
+   ESTIMADO, 15 estaciones desde 2017). Se proyecta la anomalia en log del
+   caudal de la ultima semana respecto de su climatologia, y se diluye con la
+   anticipacion: `log Q = clima + phi(k) * anomalia`. `phi` (0.75 a una
+   semana, 0.35 a cuatro) y la correccion de volumen salen de la propia
+   historia (`crudo.caudal_phi`).
+2. **Equipo de Yupana**: aporte del caso base x Qproy / Qobs en la semana del
+   caso base. La estacion de cada equipo esta en `mapeo_caudal.csv`:
+   `equivalente` (la de CALCULO_DELTAS o el mismo punto), `cuenca` (otro punto
+   del mismo rio) o `vecina` (sin estacion en su cuenca; solo presta la forma).
+   Sin estacion se repite el caso base.
 
-Ojo con las hojas de resultados. En CALCULO_DELTAS las hojas `SEM*_2026` no son
-semanas observadas sino lo ya calculado, y llevan las fechas de la semana de
-referencia: cargarlas contaria esa semana varias veces. El cargador detecta el
-rango repetido y las omite.
+Backtest (`tools/backtest_caudal.py`), 15 estaciones, 400 origenes semanales
+2018-2026, climatologia sin el anio evaluado. Error del volumen semanal:
+
+    semana                    1       2       3       4
+    analogo 2020 (DELTAS)   40.0 %  59.9 %  68.3 %  76.4 %   sesgo +9 a +34 %
+    persistencia            25.7 %  36.7 %  43.4 %  50.0 %
+    anomalia (actual)       24.4 %  30.7 %  32.5 %  33.4 %   sesgo < 1 %
+
+En estiaje (mayo-noviembre) 19 / 26 / 29 / 31 %. El analogo de un solo anio es
+el peor: hereda la hidrologia de 2020, que no tiene por que repetirse.
+
+Controles: `control_caudal_equipo` (estacion, escala y factor por semana),
+`control_caudal_sin_estacion` y `control_caudal_dato_viejo` (debe ser 0: correr
+`coes_caudal.py` antes). Resumen por semana en `resumen_caudal_semanal`.
+
+`coes_caudal.py` pide por tramos de 31 dias: con un rango largo el portal arma
+todo el rango en cada pagina y un anio tarda 10 minutos.
+
+Revisar en `mapeo_caudal.csv`: CINCEL sin estacion; AGUADA BLANCA, CH. CHAGLLA,
+CHECRAS, CAPILLUCAS y RENOVANDES con estacion vecina; GALLITO CIEGO y
+HUALLAMAYO son `equivalente` pero su aporte en el caso base es 2.9 veces el
+natural.
 
 ## Donde falla todavia
 
@@ -166,9 +190,6 @@ los ultimos dias se quedan sin ningun evento y el caso sale con toda la
 generacion disponible. `control_dia_sin_unidades` los marca: si da distinto de
 0, esos dias son optimistas. Queda pendiente rellenarlos con PROGRAMADO ANUAL,
 que existe en la lista HTML del portal pero no en el export.
-
-**Los caudales son persistencia, no proyeccion**, mientras
-`control_caudal_sin_factor` diga 100%: falta cargar semanas historicas.
 
 ## Las renovables
 
@@ -198,11 +219,11 @@ planta; 'solo reciente' es una planta sin un anio de historia),
 
 ## Los cruces por nombre
 
-Ni las RER ni los puntos de caudal tienen un archivo que los relacione con los
-codigos del COES, asi que se cruzan por nombre y lo dudoso va a revision:
+Las RER no tienen un archivo que las relacione con los codigos del COES, asi
+que se cruzan por nombre y lo dudoso va a revision (los caudales, 32 equipos,
+se asignan a mano en `mapeo_caudal.csv`):
 
     tools/mapear_rer.py      -> dim.rer         y mapeo_rer.csv
-    tools/mapear_caudal.py   -> dim.caudal_pto  y mapeo_caudal.csv
 
 El parecido se mide con Jaccard, palabras compartidas sobre el total de
 palabras distintas. No sirve dividir entre el nombre mas corto: con eso
@@ -211,10 +232,9 @@ caudal del embalse de San Gaban III terminaba sumandose al de San Gaban.
 
 Ademas se avisa de las colisiones, que el puntaje no detecta:
 
-    dos puntos de caudal al mismo equipo de Yupana   habria que sumarlos
     una unidad del COES a dos plantas RER            se contaria dos veces
 
-Los dos casos van a revision en vez de elegir uno.
+Va a revision en vez de elegir una.
 
 El puntaje tampoco sabe de tecnologia: WAYRA_EXP cruzaba con C.S. WAYRA SOLAR
 (64 MW) en vez de C.E. WAYRA EXTENSION (178 MW), y CS CARHUAQUERO, una solar

@@ -28,8 +28,8 @@ import bd
 REEMPLAZA = {
     "mantenimientos": [(4, 1), (3, 14)],
     "renovables":     [(25, 26)],
-    "caudales":       [(4, 2), (19, 6), (19, 10), (19, 11), (19, 12),
-                       (19, 7), (19, 8)],
+    # Solo aportes: volumenes, defluencias y riego (19/7-12) siguen del caso base.
+    "caudales":       [(4, 2), (19, 6)],
 }
 
 CAB_FIJA = ["Equipo", "Descripcion equipo", "Categoria equipo",

@@ -1,0 +1,38 @@
+[CARPETAS],,,
+Clave,Valor,,
+carpeta_scripts,sql,,
+carpeta_datos,..,,
+carpeta_salida,..\nuevos_casos,,aqui se crea una carpeta por caso
+,,,
+[HORIZONTE],,,
+Clave,Valor,,
+inicio,2026-09-20,,primer dia del caso 1
+dias_caso,7,,largo de cada caso en dias
+n_casos,4,,cuantos casos encadenados: 1 2 3 4 ...
+delta,1,,paso de etapa en horas (1 = horario)
+tipo_escenario,2,,va a escenario.csv col 4
+prefijo,SEM,,nombre = prefijo + numero de semana ISO + anio
+,,,
+[EJECUCION],,,
+Clave,Valor,,
+base,staging\yupana.duckdb,,
+script,00_comun\00_esquema.sql,,
+script,30_caudales\10_proyeccion.sql,,
+script,30_caudales\30_emit.sql,,
+,,,
+[COMANDOS],,,
+Comando,,,
+python "{RAIZ}\tools\armar_casos.py" --inicio {INICIO} --dias {DIAS} --casos {CASOS},,,
+,,,
+[VARIABLES],,,
+Clave,Valor,Tipo,Comentario
+base_restricciones,caso_base\YUPANA_SEM2326\datosrestricciones.csv,archivo,nivel de aportes de cada equipo
+mapeo_caudal,mapeo_caudal.csv,archivo,equipo Yupana -> estacion de caudal natural
+,,,
+[SALIDAS],,,
+Consulta,Hoja,,
+crudo.resumen_caudal_semanal,proyeccion,,
+crudo.control_caudal_equipo,chk_equipo,,
+crudo.control_caudal_sin_estacion,chk_sin_estacion,,
+crudo.control_caudal_dato_viejo,chk_dato_viejo,,
+crudo.caudal_phi,phi,,

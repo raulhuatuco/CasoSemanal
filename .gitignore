@@ -16,3 +16,4 @@ motor/logs/
 __pycache__/
 *.pyc
 ~$*
+_opencode_tmp/

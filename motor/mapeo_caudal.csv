@@ -1,11 +1,33 @@
-fuente,clave,tipo,nombre,id_yupana,sugerencia_1,sugerencia_2,sugerencia_3
-reporte,74676,Toma,RENOVANDES,
-web,ARICOTA,,ARICOTA,,18 ARICOTA I (0.50),19 ARICOTA II (0.50),9 ARICOTA RES (0.50)
-web,EMBALSE HUALLAMAYO - STATKRAFT,,EMBALSE HUALLAMAYO - STATKRAFT,,15 HUALLAMAYO (0.33),1 HUINCO (0.00),2 MATUCANA (0.00)
-web,RESERVORIO CIRATO,,RESERVORIO CIRATO,,8 CIRATO (0.50),39 RESERVORIO CAHUA (0.33),1 HUINCO (0.00)
-web,RESERVORIO YUNCAN,,RESERVORIO YUNCAN,,22 YUNCÁN (0.50),39 RESERVORIO CAHUA (0.33),1 HUINCO (0.00)
-web,TAMBORAQUE,,TAMBORAQUE,,1 HUINCO (0.00),2 MATUCANA (0.00),3 CALLAHUANCA (0.00)
-web,TOMA CAHUA,,TOMA CAHUA,,24 CAHUA (0.50),65 CAHUA_G1 (0.50),66 CAHUA_G2 (0.50)
-web,TOMA Km 105,,TOMA Km 105,,34 TOMA HUAMPANI (0.25),36 TOMA SURCO (0.25),38 TOMA_RENOVANDES (0.25)
-web,TOMA UCHUHUERTA - STATKRAFT,,TOMA UCHUHUERTA - STATKRAFT,,34 TOMA HUAMPANI (0.25),36 TOMA SURCO (0.25),38 TOMA_RENOVANDES (0.25)
-web,UPAMAYO,,UPAMAYO,,1 HUINCO (0.00),2 MATUCANA (0.00),3 CALLAHUANCA (0.00)
+categoria,id_yupana,equipo_yupana,estacion,relacion,regulacion,nota
+4,9,PACHACHACA,UPAMAYO,cuenca,,Mantaro alto
+4,10,YAUPI,TOMA UCHUHUERTA - STATKRAFT,cuenca,,Paucartambo
+4,11,HUANCHOR,TAMBORAQUE,cuenca,,Rimac
+4,12,PARIAC,SAN DIEGO,cuenca,,Santa
+4,13,YANANGO,YANANGO,equivalente,,CALCULO_DELTAS: TARMA
+4,18,ARICOTA I,ARICOTA,equivalente,,CALCULO_DELTAS: NATURAL ARICOTA
+4,20,MACHUPICCHU,TOMA Km 105,equivalente,,CALCULO_DELTAS: NATURAL VILCANOTA
+4,24,CAHUA,TOMA CAHUA,equivalente,,Pativilca
+4,28,GALLITO CIEGO,GALLITO CIEGO,equivalente,,Jequetepeque
+4,34,P.C.H CHAGLLA,,,,sin estacion en su cuenca (antes CHIMAY); repite el caso base
+4,38,MCH CERRO DEL AGUILA,UPAMAYO,cuenca,,Mantaro
+4,39,CARHUAC,TAMBORAQUE,cuenca,,Rimac
+4,54,LA VIRGEN,YANANGO,cuenca,,Tarma
+19,1,SHEQUE,SHEQUE,equivalente,horaria,CALCULO_DELTAS: SHEQUE (SANTA EULALIA)
+19,4,PRESA MALPASO,,,estacional,embalse estacional: manda el plan de descargas
+19,5,AGUADA BLANCA,,,estacional,embalse estacional: manda el plan de descargas
+19,7,CINCEL,,,estacional,embalse estacional: manda el plan de descargas
+19,8,CIRATO,RESERVORIO CIRATO,equivalente,horaria,Chancay-Lambayeque
+19,12,SAN GABAN,SAN GABAN,equivalente,horaria,CALCULO_DELTAS: NATURAL SAN GABAN
+19,13,TULUMAYO,CHIMAY,equivalente,horaria,CALCULO_DELTAS: TULUMAYO
+19,14,SAN DIEGO,SAN DIEGO,equivalente,horaria,Santa
+19,15,HUALLAMAYO,EMBALSE HUALLAMAYO - STATKRAFT,equivalente,horaria,Paucartambo
+19,16,TABLACHACA,UPAMAYO,cuenca,horaria,CALCULO_DELTAS: MANTARO
+19,17,CHAGLLA EM,,,horaria,sin estacion en su cuenca (antes CHIMAY); repite el caso base
+19,23,SHAPIRINGO,RESERVORIO YUNCAN,cuenca,horaria,Paucartambo; revisar
+19,28,CERRO DEL AGUILA EM,UPAMAYO,cuenca,horaria,Mantaro
+19,30,PALLCA,SHEQUE,cuenca,horaria,Santa Eulalia
+19,31,EMB CHECRAS,,,horaria,sin estacion en su cuenca (antes TOMA CAHUA); repite el caso base
+19,32,RESER CAPILLUCAS,,,horaria,sin estacion en su cuenca (antes TAMBORAQUE); repite el caso base
+19,37,EMB SAN GABAN III,SAN GABAN,cuenca,horaria,San Gaban
+19,38,TOMA_RENOVANDES,,,horaria,sin estacion en su cuenca (antes YANANGO); repite el caso base
+19,39,RESERVORIO CAHUA,TOMA CAHUA,equivalente,horaria,Pativilca
