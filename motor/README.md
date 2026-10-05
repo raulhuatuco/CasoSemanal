@@ -32,6 +32,38 @@ la columna A vacía:
   de los scripts. Tipos: `texto | archivo | numero | logico`.
 - `[SALIDAS]`   `consulta | hoja` → vuelca vistas de control al propio libro.
 
+## Los libros de tema: dos botones
+
+`Yupana_Mantenimientos.xlsm`, `Yupana_RER.xlsm` y `Yupana_Caudales.xlsm` llevan
+[`vba/Botones.bas`](vba/Botones.bas), con una macro por botón:
+
+| macro | qué hace | toca la red |
+|---|---|---|
+| `ActualizarDatos` | revisa que la base cubra el horizonte y descarga lo que falte | sí |
+| `Procesar` | corre el script del módulo y deja el resultado a la vista | no |
+
+Su `Params` es más corto, porque el detalle vive donde se usa:
+
+- `[FUENTE]`  `fuente \| comando \| horas`, una fila por descarga que hay que
+  tener al día. `fuente` es el nombre con el que se registra en
+  `crudo.descarga`; `horas` es cuánto puede envejecer la más nueva. El botón
+  escribe el estado en las dos columnas de la derecha.
+- `[EJECUCION]` una sola fila `script`: el del módulo. Ese `.sql` declara sus
+  pasos con líneas `-- #incluir otro.sql`, que el VBA pega en su sitio antes de
+  mandarlo. Params dice qué se corre, no en cuántos archivos está escrito.
+- `[HOJAS]`  `hoja | vista | boton`: qué deja a la vista cada botón. En
+  mantenimientos son tres: `Datos` (`crudo.mtto_horizonte`), `Resultado`
+  (`crudo.mantenimiento_final`) y `Control` (`crudo.control`, una fila por
+  control con su conteo y `FALLA` si la que debe dar 0 no lo da).
+
+El esquema no entra en Params: `00_comun/00_esquema.sql` es el diseño de la
+base y lo corren las herramientas de descarga cada vez que la abren.
+
+Si la carpeta está sincronizada con OneDrive, Excel abre el libro por su URL de
+nube y `ThisWorkbook.Path` devuelve `https://...`, con lo que no se encuentra
+ni un `.sql` ni la base. Para ese caso `[CARPETAS]` admite `raiz` con la ruta
+local de esta carpeta.
+
 ## Cómo lo lee el SQL
 
 Cada `.sql` empieza declarando sus valores por defecto, así corre igual desde

@@ -211,3 +211,15 @@ CREATE TABLE IF NOT EXISTS dim.caudal_estacion (
     regulacion    VARCHAR,   -- embalses: horaria | estacional
     nota          VARCHAR
 );
+
+-- Lo que se mira despues de descargar: los eventos que tocan el horizonte, de
+-- la ultima descarga de cada programa. El horizonte llega en fecha_ini y
+-- fecha_fin; fuera de Excel, sin variables, son los proximos 28 dias.
+CREATE OR REPLACE VIEW crudo.mtto_horizonte AS
+SELECT programa, empresa, equipo, cod_eq, inicio, final,
+       indisponibilidad, prog, tipo_mantto, descripcion, descarga
+FROM crudo.mtto
+WHERE final  >= COALESCE(getvariable('fecha_ini'), current_date::VARCHAR)::DATE
+  AND inicio  < COALESCE(getvariable('fecha_fin'), (current_date + 28)::VARCHAR)::DATE + 1
+QUALIFY descarga = max(descarga) OVER (PARTITION BY programa)
+ORDER BY inicio, empresa, equipo;

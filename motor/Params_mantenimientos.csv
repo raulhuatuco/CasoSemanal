@@ -1,0 +1,26 @@
+[CARPETAS],,,,
+raiz,C:\RH\OneDrive\CasoYupana\motor,,,solo porque Excel abre el libro por la URL de OneDrive
+carpeta_scripts,sql,,,
+,,,,
+[HORIZONTE],,,,
+inicio,2026-09-20,,,primer dia del caso
+dias,28,,,4 casos de 7 dias
+dias_atras,0,,,historia que ademas hace falta en la base
+,,,,
+[FUENTE],,,,
+Fuente,Comando,Horas,Estado,Ultima descarga
+mtto,"python ""{RAIZ}\tools\coes_mtto.py"" {INICIO} {FIN}",12,,
+,,,,
+[EJECUCION],,,,
+base,staging\yupana.duckdb,,,
+script,10_mantenimientos.sql,,,
+,,,,
+[VARIABLES],,,,
+pd_dias,2,numero,,dias que cubre el programa diario desde que se publica
+solo_fs,VERDADERO,logico,,solo INDISPONIBILIDAD = F/S resta disponibilidad
+,,,,
+[HOJAS],,,,
+Hoja,Vista,Boton,,
+Datos,crudo.mtto_horizonte,1,,
+Resultado,crudo.mantenimiento_final,2,,
+Control,crudo.control,2,,
